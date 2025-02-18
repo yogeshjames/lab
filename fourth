@@ -1,0 +1,116 @@
+#include <iostream>
+#include <queue>
+#include <vector>
+#include <iomanip>
+
+using namespace std;
+
+struct Process {
+    int id, arrivalTime, burstTime, remainingTime, completionTime;
+    int waitingTime, turnaroundTime;
+};
+
+void roundRobinScheduling(vector<Process> &processes, int timeQuantum) {
+    int currentTime = 0, idleTime = 0;
+    queue<int> readyQueue;
+    vector<bool> inQueue(processes.size(), false);
+    int completed = 0, n = processes.size();
+
+    // Sort by Arrival Time
+    sort(processes.begin(), processes.end(), [](Process a, Process b) {
+        return a.arrivalTime < b.arrivalTime;
+    });
+
+    // Push first arriving process to queue
+    readyQueue.push(0);
+    inQueue[0] = true;
+
+    vector<int> ganttChart;
+
+    while (completed < n) {
+        if (readyQueue.empty()) {
+            ganttChart.push_back(-1);  // CPU Idle
+            idleTime++;
+            currentTime++;
+            for (int i = 0; i < n; i++) {
+                if (!inQueue[i] && processes[i].arrivalTime <= currentTime) {
+                    readyQueue.push(i);
+                    inQueue[i] = true;
+                    break;
+                }
+            }
+            continue;
+        }
+
+        int index = readyQueue.front();
+        readyQueue.pop();
+        ganttChart.push_back(index);
+
+        int executeTime = min(timeQuantum, processes[index].remainingTime);
+        processes[index].remainingTime -= executeTime;
+        currentTime += executeTime;
+
+        // Check for new arrivals during execution
+        for (int i = 0; i < n; i++) {
+            if (!inQueue[i] && processes[i].arrivalTime <= currentTime) {
+                readyQueue.push(i);
+                inQueue[i] = true;
+            }
+        }
+
+        if (processes[index].remainingTime > 0) {
+            readyQueue.push(index);
+        } else {
+            processes[index].completionTime = currentTime;
+            completed++;
+        }
+    }
+
+    // Calculate Turnaround Time and Waiting Time
+    float totalWaitingTime = 0, totalTurnaroundTime = 0;
+    for (auto &p : processes) {
+        p.turnaroundTime = p.completionTime - p.arrivalTime;
+        p.waitingTime = p.turnaroundTime - p.burstTime;
+        totalWaitingTime += p.waitingTime;
+        totalTurnaroundTime += p.turnaroundTime;
+    }
+
+    // Print Gantt Chart
+    cout << "\nGantt Chart: ";
+    for (int index : ganttChart) {
+        if (index == -1)
+            cout << "| Idle ";
+        else
+            cout << "| P" << processes[index].id << " ";
+    }
+    cout << "|\n\n";
+
+    // Print Process Table
+    cout << "Process\tArrival\tBurst\tWaiting\tTurnaround\tCompletion\n";
+    for (auto &p : processes) {
+        cout << "P" << p.id << "\t" << p.arrivalTime << "\t"
+             << p.burstTime << "\t" << p.waitingTime << "\t"
+             << p.turnaroundTime << "\t\t" << p.completionTime << "\n";
+    }
+
+    // Print Averages
+    cout << fixed << setprecision(2);
+    cout << "\nAverage Waiting Time: " << totalWaitingTime / n << " units\n";
+    cout << "Average Turnaround Time: " << totalTurnaroundTime / n << " units\n";
+    cout << "Total Idle Time: " << idleTime << " units\n";
+}
+
+int main() {
+    vector<Process> processes = {
+        {1, 2, 12, 12, 0, 0, 0},
+        {2, 0, 2, 2, 0, 0, 0},
+        {3, 1, 3, 3, 0, 0, 0},
+        {4, 3, 7, 7, 0, 0, 0},
+        {5, 5, 11, 11, 0, 0, 0}
+    };
+
+    int timeQuantum = 2;
+    roundRobinScheduling(processes, timeQuantum);
+
+    return 0;
+}
