@@ -1,0 +1,104 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+struct Process {
+    string name;
+    int arrivalTime, burstTime, remainingTime, queueNumber;
+    int waitingTime, turnaroundTime, completionTime;
+};
+
+// Function to execute Round Robin for Queue 1
+void roundRobin(vector<Process> &q1, int timeQuantum, int &currentTime, vector<int> &ganttChart) {
+    queue<int> readyQueue;
+    int n = q1.size();
+    vector<bool> inQueue(n, false);
+    int completed = 0;
+
+    // Push all processes that arrive at time 0 into the queue
+    for (int i = 0; i < n; i++) {
+        if (q1[i].arrivalTime == 0) {
+            readyQueue.push(i);
+            inQueue[i] = true;
+        }
+    }
+
+    while (completed < n) {
+        if (readyQueue.empty()) {
+            currentTime++;
+            continue;
+        }
+
+        int index = readyQueue.front();
+        readyQueue.pop();
+
+        int executeTime = min(timeQuantum, q1[index].remainingTime);
+        q1[index].remainingTime -= executeTime;
+        currentTime += executeTime;
+        ganttChart.push_back(index);
+
+        // Check for new arrivals
+        for (int i = 0; i < n; i++) {
+            if (!inQueue[i] && q1[i].arrivalTime <= currentTime) {
+                readyQueue.push(i);
+                inQueue[i] = true;
+            }
+        }
+
+        if (q1[index].remainingTime > 0) {
+            readyQueue.push(index);
+        } else {
+            q1[index].completionTime = currentTime;
+            completed++;
+        }
+    }
+}
+
+// Function to execute FCFS for Queue 2
+void fcfs(vector<Process> &q2, int &currentTime, vector<int> &ganttChart) {
+    for (auto &p : q2) {
+        if (currentTime < p.arrivalTime) {
+            currentTime = p.arrivalTime;
+        }
+        ganttChart.push_back(&p - &q2[0]); // Store index in Gantt chart
+        currentTime += p.burstTime;
+        p.completionTime = currentTime;
+    }
+}
+
+int main() {
+    vector<Process> processes = {
+        {"P1", 0, 4, 4, 1, 0, 0, 0},
+        {"P2", 0, 3, 3, 1, 0, 0, 0},
+        {"P3", 0, 8, 8, 2, 0, 0, 0},
+        {"P4", 10, 5, 5, 1, 0, 0, 0}
+    };
+
+    vector<Process> q1, q2;
+    for (auto &p : processes) {
+        if (p.queueNumber == 1) q1.push_back(p);
+        else q2.push_back(p);
+    }
+
+    int timeQuantum = 2;
+    int currentTime = 0;
+    vector<int> ganttChart;
+
+    roundRobin(q1, timeQuantum, currentTime, ganttChart);
+    fcfs(q2, currentTime, ganttChart);
+
+    cout << "Gantt Chart:\n";
+    for (int index : ganttChart) {
+        cout << "P" << processes[index].name << " ";
+    }
+    cout << "\n";
+
+    cout << "Process\tArrival\tBurst\tWaiting\tTurnaround\tCompletion\n";
+    for (auto &p : processes) {
+        p.turnaroundTime = p.completionTime - p.arrivalTime;
+        p.waitingTime = p.turnaroundTime - p.burstTime;
+        cout << p.name << "\t" << p.arrivalTime << "\t" << p.burstTime << "\t" 
+             << p.waitingTime << "\t" << p.turnaroundTime << "\t" << p.completionTime << "\n";
+    }
+
+    return 0;
+}
