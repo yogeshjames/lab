@@ -1,0 +1,69 @@
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+class IndexedAllocation {
+    vector<bool> disk; // true means free, false means allocated
+public:
+    IndexedAllocation(int size): disk(size, true) {}
+
+    // Allocate file blocks using indexed allocation.
+    // Returns an index block (vector of allocated block indices).
+    vector<int> allocateFile(const string& fileName, int fileSize) {
+        vector<int> indexBlock;
+        for (int i = 0; i < disk.size() && indexBlock.size() < fileSize; i++){
+            if(disk[i]){
+                disk[i] = false;
+                indexBlock.push_back(i);
+            }
+        }
+        if(indexBlock.size() < fileSize){
+            // Rollback if allocation fails.
+            for(int idx : indexBlock)
+                disk[idx] = true;
+            cout << "Allocation failed for file '" << fileName << "'" << endl;
+            return {};
+        }
+        cout << "File '" << fileName << "' allocated with index block: ";
+        for (auto idx : indexBlock)
+            cout << idx << " ";
+        cout << endl;
+        return indexBlock;
+    }
+
+    // Deallocate a file using its index block.
+    void deallocateFile(const string& fileName, const vector<int>& indexBlock) {
+        for (int idx : indexBlock)
+            disk[idx] = true;
+        cout << "File '" << fileName << "' deallocated" << endl;
+    }
+
+    // Display disk status.
+    void displayDisk() {
+        cout << "Indexed Allocation Disk Blocks (F = free, A = allocated):" << endl;
+        for (bool free : disk) {
+            cout << (free ? "F " : "A ");
+        }
+        cout << endl;
+    }
+};
+
+int main_indexed() {
+    IndexedAllocation ia(20);
+    ia.displayDisk();
+
+    // Allocate FileA of size 5.
+    auto indexA = ia.allocateFile("FileA", 5);
+    ia.displayDisk();
+
+    // Allocate FileB of size 7.
+    auto indexB = ia.allocateFile("FileB", 7);
+    ia.displayDisk();
+
+    // Deallocate FileA.
+    ia.deallocateFile("FileA", indexA);
+    ia.displayDisk();
+
+    return 0;
+}

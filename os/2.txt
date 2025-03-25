@@ -1,0 +1,89 @@
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+struct Block {
+    bool free;
+    int next; // index of the next block in the file, -1 if end
+    Block(): free(true), next(-1){}
+};
+
+class LinkedAllocation {
+    vector<Block> disk;
+public:
+    LinkedAllocation(int size): disk(size) {}
+
+    // Allocate file blocks using linked allocation.
+    // Returns the starting block index, or -1 if allocation fails.
+    int allocateFile(const string& fileName, int fileSize) {
+        int prev = -1, start = -1;
+        int count = 0;
+        for (int i = 0; i < disk.size() && count < fileSize; i++){
+            if(disk[i].free){
+                if(start == -1)
+                    start = i;
+                disk[i].free = false;
+                if(prev != -1){
+                    disk[prev].next = i;
+                }
+                prev = i;
+                count++;
+            }
+        }
+        if(count < fileSize){
+            // Rollback allocation if not enough blocks.
+            int cur = start;
+            while(cur != -1){
+                disk[cur].free = true;
+                int nxt = disk[cur].next;
+                disk[cur].next = -1;
+                cur = nxt;
+            }
+            cout << "Allocation failed for file '" << fileName << "'" << endl;
+            return -1;
+        }
+        cout << "File '" << fileName << "' allocated, starting at block " << start << endl;
+        return start;
+    }
+
+    // Deallocate a file given the starting block.
+    void deallocateFile(const string& fileName, int start) {
+        int cur = start;
+        while(cur != -1){
+            disk[cur].free = true;
+            int nxt = disk[cur].next;
+            disk[cur].next = -1;
+            cur = nxt;
+        }
+        cout << "File '" << fileName << "' deallocated" << endl;
+    }
+
+    // Display disk status.
+    void displayDisk() {
+        cout << "Linked Allocation Disk Blocks (F = free, A = allocated):" << endl;
+        for (int i = 0; i < disk.size(); i++){
+            cout << (disk[i].free ? "F " : "A ");
+        }
+        cout << endl;
+    }
+};
+
+int main_linked() {
+    LinkedAllocation la(20);
+    la.displayDisk();
+
+    // Allocate FileA of size 5.
+    int startA = la.allocateFile("FileA", 5);
+    la.displayDisk();
+
+    // Allocate FileB of size 7.
+    int startB = la.allocateFile("FileB", 7);
+    la.displayDisk();
+
+    // Deallocate FileA.
+    la.deallocateFile("FileA", startA);
+    la.displayDisk();
+
+    return 0;
+}

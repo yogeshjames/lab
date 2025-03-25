@@ -1,0 +1,93 @@
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+class ContiguousAllocation {
+    vector<bool> diskBlocks;  // true means free, false means allocated
+    int diskSize;
+public:
+    ContiguousAllocation(int size) : diskSize(size) {
+        diskBlocks.resize(size, true);  // all blocks are initially free
+    }
+    
+    // Allocate contiguous blocks for a file of given fileSize.
+    // Returns true if allocation is successful.
+    bool allocateContiguous(const string& fileName, int fileSize) {
+        int start = -1;
+        int freeCount = 0;
+        for (int i = 0; i < diskSize; i++) {
+            if (diskBlocks[i]) {  // free block found
+                if (start == -1)
+                    start = i;
+                freeCount++;
+                if (freeCount == fileSize) {
+                    // Allocate these blocks.
+                    for (int j = start; j < start + fileSize; j++) {
+                        diskBlocks[j] = false;
+                    }
+                    cout << "File '" << fileName << "' allocated at blocks " 
+                         << start << " to " << start + fileSize - 1 << endl;
+                    return true;
+                }
+            } else {
+                // Reset search if block is not free.
+                start = -1;
+                freeCount = 0;
+            }
+        }
+        cout << "Allocation failed for file '" << fileName 
+             << "': Not enough contiguous space." << endl;
+        return false;
+    }
+    
+    // Deallocate contiguous blocks starting from 'start' of given fileSize.
+    bool deallocateContiguous(const string& fileName, int start, int fileSize) {
+        if (start < 0 || start + fileSize > diskSize) {
+            cout << "Invalid deallocation request for file '" << fileName << "'" << endl;
+            return false;
+        }
+        for (int i = start; i < start + fileSize; i++) {
+            diskBlocks[i] = true;
+        }
+        cout << "File '" << fileName << "' deallocated from blocks " 
+             << start << " to " << start + fileSize - 1 << endl;
+        return true;
+    }
+    
+    // Display the current status of disk blocks.
+    void displayDisk() {
+        cout << "Contiguous Allocation Disk Blocks (F = free, A = allocated):" << endl;
+        for (bool free : diskBlocks) {
+            cout << (free ? "F " : "A ");
+        }
+        cout << endl;
+    }
+};
+
+int main_contiguous() {
+    ContiguousAllocation fileSys(20);
+    fileSys.displayDisk();
+
+    // Allocate FileA of size 5.
+    fileSys.allocateContiguous("FileA", 5);
+    fileSys.displayDisk();
+
+    // Allocate FileB of size 7.
+    fileSys.allocateContiguous("FileB", 7);
+    fileSys.displayDisk();
+
+    // Attempt to allocate FileC of size 6 (may fail if no contiguous space is available).
+    fileSys.allocateContiguous("FileC", 6);
+    fileSys.displayDisk();
+
+    // Deallocate FileA (assuming FileA was allocated from block 0 to 4).
+    fileSys.deallocateContiguous("FileA", 0, 5);
+    fileSys.displayDisk();
+
+    // Try allocating FileC again now that there is free space.
+    fileSys.allocateContiguous("FileC", 6);
+    fileSys.displayDisk();
+
+    return 0;
+}
